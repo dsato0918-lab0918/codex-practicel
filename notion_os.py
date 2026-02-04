@@ -1,0 +1,331 @@
+#!/usr/bin/env python3
+"""Notion OS template generator for construction/real-estate AI workflows."""
+from __future__ import annotations
+
+import argparse
+import json
+from dataclasses import dataclass
+from typing import Iterable
+
+
+@dataclass(frozen=True)
+class Database:
+    name: str
+    purpose: str
+    properties: list[str]
+    template: str
+
+
+@dataclass(frozen=True)
+class NotionOS:
+    title: str
+    goal: list[str]
+    flow: str
+    databases: list[Database]
+    dashboard: list[str]
+    operations: list[str]
+    extensions: list[str]
+    manual: str
+
+
+def build_notion_os() -> NotionOS:
+    databases = [
+        Database(
+            name="案件DB",
+            purpose="すべての判断の起点",
+            properties=[
+                "案件名（Title）",
+                "ステータス（Select：検討中／見積中／受注／辞退）",
+                "工事種別（Select）",
+                "所在地（Text）",
+                "想定予算（Number）",
+                "工期（Date or Text）",
+                "施主タイプ（Select：個人／法人／業者）",
+                "違和感メモ（Text）",
+                "リソース状況（Select：余裕／普通／逼迫）",
+                "総合判定（Rollup or Select）",
+            ],
+            template=(
+                "### この案件の基本情報\n"
+                "- 工事／業務種別：\n"
+                "- 建物用途：\n"
+                "- 所在地：\n"
+                "- 想定予算：\n"
+                "- 希望工期：\n"
+                "- 施主タイプ（個人／法人／業者）：\n"
+                "- 決定権者：\n\n"
+                "### 初回接触時の印象（重要）\n"
+                "- 施主の温度感（高／中／低）：\n"
+                "- 話が通じるか：\n"
+                "- 要望は整理されているか：\n"
+                "- 違和感・引っかかり：\n\n"
+                "※ここは感情的でOK。後でAI判断の精度が上がる。\n"
+            ),
+        ),
+        Database(
+            name="AI判断ログDB",
+            purpose="やる／やらない判断の履歴化",
+            properties=[
+                "関連案件（Relation → 案件DB）",
+                "AI判定（Select：受注／条件付き／断る）",
+                "想定利益率（Number %）",
+                "主なリスク（Text）",
+                "必須条件（Text）",
+                "断り文（Text）",
+                "実際の結果（Select：成功／失敗／途中）",
+            ],
+            template=(
+                "### AI案件判断（コピペ入力）\n"
+                "以下の情報をChatGPTに入力し、結果を貼り付ける。\n\n"
+                "### AI総合判定\n"
+                "- 判定結果：\n"
+                "- 想定利益率：\n\n"
+                "### 主なリスク\n"
+                "- \n"
+                "- \n"
+                "- \n\n"
+                "### 受注する場合の必須条件\n"
+                "- \n"
+                "- \n\n"
+                "### 断る場合の使用文面\n"
+                "（メール・口頭どちらでも使えるようにそのまま残す）\n\n"
+                "### 社長コメント（必須）\n"
+                "- なぜこの判断にしたか：\n"
+                "- 将来同じ案件が来たらどうするか：\n\n"
+                "👉 ここが会社の知能になる\n"
+            ),
+        ),
+        Database(
+            name="施主要望DB",
+            purpose="言った言わない防止",
+            properties=[
+                "関連案件（Relation → 案件DB）",
+                "要望原文（Text）",
+                "設計条件化（Text）",
+                "数値化必要項目（Multi-select）",
+                "誤解ポイント（Text）",
+                "確認質問リスト（Text）",
+                "確認済み（Checkbox）",
+            ],
+            template=(
+                "### 施主要望 原文\n"
+                "（メール・LINE・打ち合わせメモをそのまま貼る）\n\n"
+                "### 設計条件としての整理\n"
+                "- \n"
+                "- \n"
+                "- \n\n"
+                "### 数値化・明文化が必要な項目\n"
+                "- 金額：\n"
+                "- 寸法：\n"
+                "- グレード：\n"
+                "- 範囲：\n\n"
+                "### 誤解が起きやすいポイント\n"
+                "- \n"
+                "- \n\n"
+                "### 施主に必ず確認する質問\n"
+                "- \n"
+                "- \n"
+                "- \n"
+            ),
+        ),
+        Database(
+            name="トラブル予測DB",
+            purpose="着工前リスク管理",
+            properties=[
+                "関連案件（Relation → 案件DB）",
+                "想定トラブル（Multi-text）",
+                "原因（Text）",
+                "予防策（Text）",
+                "事前説明文（Text）",
+                "社内注意事項（Text）",
+                "実際に起きた？（Checkbox）",
+            ],
+            template=(
+                "### 想定されるトラブル（AI出力）\n"
+                "1. \n"
+                "2. \n"
+                "3. \n"
+                "4. \n"
+                "5. \n\n"
+                "### 原因整理\n"
+                "- 人的要因：\n"
+                "- 仕様要因：\n"
+                "- スケジュール要因：\n\n"
+                "### 事前に取るべき予防策\n"
+                "- \n"
+                "- \n"
+                "- \n\n"
+                "### 施主への事前説明文（そのまま使う）\n\n"
+                "### 社内・協力業者への注意事項\n"
+                "- \n"
+                "- \n"
+            ),
+        ),
+    ]
+
+    return NotionOS(
+        title="建築・不動産AI OS",
+        goal=[
+            "社長判断を再現する",
+            "案件判断・要望整理・トラブル予測を一気通貫で回す",
+            "判断履歴を会社の資産として蓄積",
+        ],
+        flow=(
+            "[案件DB] ──▶ [AI判断ログDB]\n"
+            "     │                 ▲\n"
+            "     │                 │\n"
+            "     ├─▶ [施主要望DB] ┤\n"
+            "     │                 │\n"
+            "     └─▶ [トラブル予測DB]\n"
+            "\n"
+            "＋ ダッシュボード（操作起点）\n"
+        ),
+        databases=databases,
+        dashboard=[
+            "「新規案件作成」ボタン",
+            "案件DB（検討中のみ表示）",
+            "▶ ボタン：AI案件判断を実行",
+            "▶ ボタン：施主要望翻訳",
+            "▶ ボタン：トラブル予測",
+        ],
+        operations=[
+            "案件は必ずDBから開始（口頭禁止）",
+            "AI結果は必ず保存（判断ログ）",
+            "失敗案件ほどコメントを残す",
+            "月1回、判断ログを見返す",
+        ],
+        extensions=[
+            "営業AI DB",
+            "見積AI DB",
+            "標準仕様DB",
+            "月額課金用テンプレ分離",
+        ],
+        manual=(
+            "## 目的\n"
+            "このNotionは、社長の代わりに判断するためのツールです。\n"
+            "迷ったらNotionを見る → 記録する → 判断する。\n\n"
+            "## 基本ルール\n"
+            "1. すべての案件は案件DBから始める\n"
+            "2. 判断が必要なときはAI判断を必ず実行\n"
+            "3. AI結果を無視する場合は理由を書く\n"
+            "4. トラブルが起きたら必ず記録する\n\n"
+            "## 使い方（流れ）\n"
+            "### ① 新しい話が来たら\n"
+            "- 案件DBに新規案件を作成\n"
+            "- 基本情報と違和感メモを必ず書く\n\n"
+            "### ② 受けるか迷ったら\n"
+            "- AI判断ログDBを作成\n"
+            "- プロンプトをChatGPTに貼る\n"
+            "- 結果をそのまま保存\n\n"
+            "### ③ 施主の要望を聞いたら\n"
+            "- 施主要望DBに原文を貼る\n"
+            "- 翻訳結果を保存\n"
+            "- 確認質問を施主に返す\n\n"
+            "### ④ 着工前\n"
+            "- トラブル予測DBを必ず作成\n"
+            "- 事前説明文を施主に共有\n\n"
+            "## よくあるNG例\n"
+            "- 忙しいから後で入力する → ❌\n"
+            "- 今回は大丈夫そう → ❌\n"
+            "- 前も同じ感じだった → ❌\n\n"
+            "👉 判断を軽くしないこと\n\n"
+            "## この仕組みを使う意味\n"
+            "- 社長に聞かなくていい\n"
+            "- 判断の正解率が上がる\n"
+            "- クレームが減る\n"
+            "- 自分が守られる\n\n"
+            "このNotionは会社を守るためのツールであり、あなたを守るツールです。\n\n"
+            "## 最後に\n"
+            "この仕組みが回らないときは、人が悪いのではなく記録が足りないだけです。\n"
+            "必ず残す。必ず振り返る。\n"
+        ),
+    )
+
+
+def to_markdown(notion_os: NotionOS) -> str:
+    lines: list[str] = []
+    lines.append(f"# {notion_os.title}")
+    lines.append("\n## 目的")
+    lines.extend([f"- {item}" for item in notion_os.goal])
+    lines.append("\n## 全体構造")
+    lines.append("```\n" + notion_os.flow.rstrip() + "\n```")
+
+    for db in notion_os.databases:
+        lines.append(f"\n## {db.name}")
+        lines.append(f"**用途**：{db.purpose}")
+        lines.append("\n### プロパティ")
+        lines.extend([f"- {prop}" for prop in db.properties])
+        lines.append("\n### テンプレート")
+        lines.append(db.template.rstrip())
+
+    lines.append("\n## ダッシュボード")
+    lines.extend([f"- {item}" for item in notion_os.dashboard])
+    lines.append("\n## 運用ルール")
+    lines.extend([f"- {item}" for item in notion_os.operations])
+    lines.append("\n## 次の拡張")
+    lines.extend([f"- {item}" for item in notion_os.extensions])
+    lines.append("\n# 社員用｜1枚マニュアル")
+    lines.append(notion_os.manual.rstrip())
+    lines.append("")
+    return "\n".join(lines)
+
+
+def to_json(notion_os: NotionOS) -> str:
+    payload = {
+        "title": notion_os.title,
+        "goal": notion_os.goal,
+        "flow": notion_os.flow,
+        "databases": [
+            {
+                "name": db.name,
+                "purpose": db.purpose,
+                "properties": db.properties,
+                "template": db.template,
+            }
+            for db in notion_os.databases
+        ],
+        "dashboard": notion_os.dashboard,
+        "operations": notion_os.operations,
+        "extensions": notion_os.extensions,
+        "manual": notion_os.manual,
+    }
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def write_output(content: str, output: str | None) -> None:
+    if output:
+        with open(output, "w", encoding="utf-8") as handle:
+            handle.write(content)
+    else:
+        print(content)
+
+
+def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Generate Notion OS templates in Markdown or JSON.",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["md", "json"],
+        default="md",
+        help="Output format (md or json).",
+    )
+    parser.add_argument(
+        "--output",
+        help="Write output to a file (defaults to stdout).",
+    )
+    return parser.parse_args(argv)
+
+
+def main() -> None:
+    args = parse_args()
+    notion_os = build_notion_os()
+    if args.format == "json":
+        content = to_json(notion_os)
+    else:
+        content = to_markdown(notion_os)
+    write_output(content, args.output)
+
+
+if __name__ == "__main__":
+    main()
